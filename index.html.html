@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saldos SADA Y BERLYN</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .last-update {
+            color: #718096;
+            font-size: 0.95em;
+        }
+
+        .refresh-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .company-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .company-name {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .columns-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        .column-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .column-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            border-left-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            gap: 15px;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.05em;
+            word-break: break-word;
+        }
+
+        .item-amount {
+            font-size: 1.2em;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .item-amount.positive {
+            color: #48bb78;
+        }
+
+        .item-amount.negative {
+            color: #f56565;
+        }
+
+        .item-obs {
+            color: #718096;
+            font-size: 0.9em;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #f56565;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .companies-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .columns-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📊 Saldos SADA Y BERLYN</h1>
+                <div class="last-update" id="lastUpdate">Cargando datos...</div>
+            </div>
+            <button class="refresh-btn" onclick="loadData()">🔄 Actualizar</button>
+        </div>
+
+        <div id="content">
+            <div class="loading">⏳ Cargando datos desde Google Sheets...</div>
+        </div>
+    </div>
+
+    <script>
+        // URLs CSV de cada hoja
+        const CSV_URLS = {
+            'ISERVICE': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9LmxFjWBISKEY_JPmZQL5509B5xImi8b6hLrPcIC6luxS6sjwX0HyvldTx1IZkw/pub?gid=1204434618&single=true&output=csv',
+            'SOUTH': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9LmxFjWBISKEY_JPmZQL5509B5xImi8b6hLrPcIC6luxS6sjwX0HyvldTx1IZkw/pub?gid=1964843396&single=true&output=csv',
+            'TERRA': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9LmxFjWBISKEY_JPmZQL5509B5xImi8b6hLrPcIC6luxS6sjwX0HyvldTx1IZkw/pub?gid=684049728&single=true&output=csv'
+        };
+
+        // Formatear montos
+        function formatAmount(amount) {
+            return new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                minimumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // Parsear CSV
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            return lines.map(line => {
+                // Parser CSV simple que maneja comas dentro de comillas
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result;
+            });
+        }
+
+        // Parsear datos de una hoja
+        function parseSheetData(csvText, companyName) {
+            const rows = parseCSV(csvText);
+            
+            if (rows.length < 4) {
+                console.warn(`${companyName}: No hay suficientes filas`);
+                return null;
+            }
+
+            const company = {
+                name: companyName,
+                columns: []
+            };
+
+            // Buscar SDF y BERLYN en la fila 2 (índice 1)
+            let sdfColIndex = -1;
+            let berlynColIndex = -1;
+
+            if (rows[1]) {
+                for (let j = 0; j < rows[1].length; j++) {
+                    if (rows[1][j] === 'SDF') sdfColIndex = j;
+                    if (rows[1][j] === 'BERLYN') berlynColIndex = j;
+                }
+            }
+
+            console.log(`${companyName} - SDF col: ${sdfColIndex}, BERLYN col: ${berlynColIndex}`);
+
+            // Los datos empiezan en fila 4 (índice 3)
+            const dataStartRow = 3;
+
+            // Procesar columna SDF
+            if (sdfColIndex >= 0) {
+                const sdfColumn = {
+                    name: 'SDF',
+                    items: []
+                };
+
+                for (let i = dataStartRow; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const concepto = row[0];
+                    const monto = row[sdfColIndex];
+                    const obs = row[sdfColIndex + 1];
+
+                    if (concepto && concepto.trim() !== '' && monto && monto.trim() !== '') {
+                        const montoNum = parseFloat(monto.replace(/[^\d.-]/g, ''));
+                        
+                        if (!isNaN(montoNum)) {
+                            // Limpiar saltos de línea y espacios múltiples
+                            const cleanName = concepto.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+                            
+                            sdfColumn.items.push({
+                                name: cleanName,
+                                amount: montoNum,
+                                obs: obs ? obs.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : ''
+                            });
+                        }
+                    }
+                }
+
+                company.columns.push(sdfColumn);
+            }
+
+            // Procesar columna BERLYN
+            if (berlynColIndex >= 0) {
+                const berlynColumn = {
+                    name: 'BERLYN',
+                    items: []
+                };
+
+                for (let i = dataStartRow; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const concepto = row[0];
+                    const monto = row[berlynColIndex];
+                    const obs = row[berlynColIndex + 1];
+
+                    if (monto && monto.trim() !== '') {
+                        const montoNum = parseFloat(monto.replace(/[^\d.-]/g, ''));
+                        
+                        if (!isNaN(montoNum)) {
+                            const itemName = (concepto && concepto.trim() !== '') ? concepto.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : 'Item';
+                            
+                            berlynColumn.items.push({
+                                name: itemName,
+                                amount: montoNum,
+                                obs: obs ? obs.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : ''
+                            });
+                        }
+                    }
+                }
+
+                company.columns.push(berlynColumn);
+            }
+
+            return company;
+        }
+
+        // Cargar datos desde CSV
+        async function loadData() {
+            const content = document.getElementById('content');
+            content.innerHTML = '<div class="loading">⏳ Cargando datos desde Google Sheets...</div>';
+
+            try {
+                const companies = [];
+
+                for (const [companyName, csvUrl] of Object.entries(CSV_URLS)) {
+                    const response = await fetch(csvUrl);
+                    const csvText = await response.text();
+                    
+                    const companyData = parseSheetData(csvText, companyName);
+                    if (companyData) {
+                        companies.push(companyData);
+                    }
+                }
+
+                renderView(companies);
+                
+            } catch (error) {
+                console.error('Error al cargar datos:', error);
+                content.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error al cargar los datos</strong><br><br>
+                        ${error.message}
+                        <br><br>
+                        <button class="refresh-btn" onclick="loadData()">🔄 Reintentar</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar vista
+        function renderView(companies) {
+            document.getElementById('lastUpdate').textContent = 
+                `Última actualización: ${new Date().toLocaleString('es-AR')}`;
+            
+            const content = document.getElementById('content');
+            
+            let html = '<div class="companies-grid">';
+            
+            companies.forEach(company => {
+                html += `
+                    <div class="company-card">
+                        <div class="company-name">${company.name}</div>
+                        <div class="columns-grid">
+                `;
+                
+                company.columns.forEach(column => {
+                    html += `
+                        <div class="column-section">
+                            <div class="column-title">${column.name}</div>
+                    `;
+                    
+                    if (column.items.length === 0) {
+                        html += `<div class="empty-state">No hay datos en esta columna</div>`;
+                    } else {
+                        column.items.forEach(item => {
+                            html += `
+                                <div class="item">
+                                    <div class="item-header">
+                                        <span class="item-name">${item.name}</span>
+                                        <span class="item-amount ${item.amount >= 0 ? 'positive' : 'negative'}">
+                                            ${formatAmount(item.amount)}
+                                        </span>
+                                    </div>
+                                    ${item.obs ? `<div class="item-obs">${item.obs}</div>` : ''}
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    html += `</div>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        // Cargar datos al iniciar
+        loadData();
+
+        // Auto-actualizar cada 2 minutos
+        setInterval(loadData, 2 * 60 * 1000);
+    </script>
+</body>
+</html>
