@@ -305,18 +305,23 @@
                     const monto = row[sdfColIndex];
                     const obs = row[sdfColIndex + 1];
 
-                    if (concepto && concepto.trim() !== '' && monto && monto.trim() !== '') {
-                        const montoNum = parseFloat(monto.replace(/[^\d.-]/g, ''));
+                    if (concepto && concepto.toString().trim() !== '' && monto && monto.toString().trim() !== '') {
+                        const montoNum = parseFloat(monto.toString().replace(/[^\d.-]/g, ''));
                         
                         if (!isNaN(montoNum)) {
-                            // Limpiar saltos de línea y espacios múltiples
-                            const cleanName = concepto.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+                            // Limpiar saltos de línea y espacios múltiples del nombre
+                            const cleanName = concepto.toString()
+                                .replace(/\r?\n/g, '')  // Quitar saltos de línea
+                                .replace(/\s+/g, ' ')   // Normalizar espacios
+                                .trim();
                             
-                            sdfColumn.items.push({
-                                name: cleanName,
-                                amount: montoNum,
-                                obs: obs ? obs.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : ''
-                            });
+                            if (cleanName) {  // Solo agregar si hay nombre
+                                sdfColumn.items.push({
+                                    name: cleanName,
+                                    amount: montoNum,
+                                    obs: obs ? obs.toString().replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : ''
+                                });
+                            }
                         }
                     }
                 }
@@ -339,16 +344,22 @@
                     const monto = row[berlynColIndex];
                     const obs = row[berlynColIndex + 1];
 
-                    if (monto && monto.trim() !== '') {
-                        const montoNum = parseFloat(monto.replace(/[^\d.-]/g, ''));
+                    if (monto && monto.toString().trim() !== '') {
+                        const montoNum = parseFloat(monto.toString().replace(/[^\d.-]/g, ''));
                         
                         if (!isNaN(montoNum)) {
-                            const itemName = (concepto && concepto.trim() !== '') ? concepto.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : 'Item';
+                            let itemName = 'LP';
+                            if (concepto && concepto.toString().trim() !== '') {
+                                itemName = concepto.toString()
+                                    .replace(/\r?\n/g, '')
+                                    .replace(/\s+/g, ' ')
+                                    .trim();
+                            }
                             
                             berlynColumn.items.push({
                                 name: itemName,
                                 amount: montoNum,
-                                obs: obs ? obs.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : ''
+                                obs: obs ? obs.toString().replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : ''
                             });
                         }
                     }
