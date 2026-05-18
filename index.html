@@ -380,7 +380,9 @@
                 const companies = [];
 
                 for (const [companyName, csvUrl] of Object.entries(CSV_URLS)) {
-                    const response = await fetch(csvUrl);
+                    // Agregar timestamp para evitar caché
+                    const urlWithTimestamp = csvUrl + '&timestamp=' + new Date().getTime();
+                    const response = await fetch(urlWithTimestamp);
                     const csvText = await response.text();
                     
                     const companyData = parseSheetData(csvText, companyName);
